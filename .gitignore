@@ -1,0 +1,27 @@
+```gitignore
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+venv/
+
+# Node.js dependencies
+node_modules/
+
+# Deployment and runtime
+.sites-runtime/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Log files
+*.log
+```
