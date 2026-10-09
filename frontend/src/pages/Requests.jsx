@@ -3,7 +3,7 @@ import { Plus, Download, Clock, FileText, Sparkles } from "lucide-react";
 import { useCampus } from "../App";
 import { students, today } from "../data/seed";
 import { uid, csvDownload } from "../logic";
-import { rewriteRequestDescription } from "../api";
+import { rewriteRequestDescription, reviewOdLeaveRequest } from "../api";
 import {
   Heading,
   Panel,
@@ -23,7 +23,9 @@ export default function Requests({ erp = false }) {
     [q, setQ] = useState(""),
     [filter, setFilter] = useState("All"),
     [description, setDescription] = useState(""),
-    [isRewritingDescription, setIsRewritingDescription] = useState(false);
+    [isRewritingDescription, setIsRewritingDescription] = useState(false),
+    [aiReview, setAiReview] = useState(null),
+    [isReviewingRequest, setIsReviewingRequest] = useState(false);
   const visible = db.requests.filter(
     (r) =>
       (erp
@@ -39,6 +41,19 @@ export default function Requests({ erp = false }) {
         .includes(q.toLowerCase()),
   );
   const current = db.requests.find((r) => r.id === selected);
+  const getAiReview = async () => {
+    if (!current || isReviewingRequest) return;
+    setIsReviewingRequest(true);
+    setAiReview(null);
+    try {
+      const result = await reviewOdLeaveRequest(current, user.id);
+      setAiReview(result);
+    } catch (error) {
+      toast(`AI review could not be generated: ${error.message}`);
+    } finally {
+      setIsReviewingRequest(false);
+    }
+  };
   const rewriteDescription = async () => {
     const currentDescription = description.trim();
     if (!currentDescription || isRewritingDescription) return;
@@ -257,7 +272,12 @@ export default function Requests({ erp = false }) {
                     <Badge>{r.status}</Badge>
                   </td>
                   <td>
-                    <button onClick={() => setSelected(r.id)}>
+                    <button
+                      onClick={() => {
+                        setAiReview(null);
+                        setSelected(r.id);
+                      }}
+                    >
                       View details
                     </button>
                   </td>
@@ -326,6 +346,7 @@ export default function Requests({ erp = false }) {
           onClose={() => {
             setSelected(null);
             setAction(null);
+            setAiReview(null);
           }}
         >
           <div className="split">
@@ -376,6 +397,110 @@ export default function Requests({ erp = false }) {
                     : "The request is closed."}
           </div>
           <Timeline items={current.timeline} />
+          {((role === "Faculty" && current.status === "Advisor Review") ||
+            (role === "Admin" && current.status === "HOD Review")) && (
+            <div className="spacer">
+              <button
+                type="button"
+                className="ai-description-button"
+                disabled={isReviewingRequest}
+                onClick={getAiReview}
+              >
+                <Sparkles size={15} />
+                {isReviewingRequest
+                  ? "Reviewing student context..."
+                  : "AI suggestion & student review"}
+              </button>
+              {isReviewingRequest && (
+                <p className="leave-ai-status" role="status">
+                  Reviewing the request and synthetic student context…
+                </p>
+              )}
+              {aiReview && (
+                <section
+                  className="leave-ai-review"
+                  aria-label="AI-assisted OD and leave review"
+                >
+                  <div className="split">
+                    <h3>AI-assisted review · {aiReview.suggestion}</h3>
+                    <b>{aiReview.suggestion_score}/100</b>
+                  </div>
+                  <p className="leave-ai-score-note">
+                    {aiReview.score_meaning}
+                  </p>
+                  <div className="leave-ai-score">
+                    <div
+                      role="progressbar"
+                      aria-label="Strength of AI suggestion"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={aiReview.suggestion_score}
+                    >
+                      <span
+                        style={{
+                          width: `${aiReview.suggestion_score}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p>
+                    <b>Why:</b> {aiReview.score_explanation}
+                  </p>
+                  <div className="detail-grid">
+                    <div>
+                      <small>Synthetic student record</small>
+                      <b>
+                        {aiReview.student_name} ·{" "}
+                        {aiReview.student_profile.department} · Year{" "}
+                        {aiReview.student_profile.year}
+                      </b>
+                    </div>
+                    <div>
+                      <small>Attendance · CGPA</small>
+                      <b>
+                        {aiReview.student_profile.attendance_percent}% ·{" "}
+                        {aiReview.student_profile.cgpa}
+                      </b>
+                    </div>
+                  </div>
+                  <p className="leave-ai-score-note">
+                    Retrieved performance snapshot:{" "}
+                    {Object.keys(aiReview.student_profile.subject_scores || {})
+                      .length}{" "}
+                    subject scores,{" "}
+                    {aiReview.student_profile.achievements?.length || 0}{" "}
+                    achievements, and{" "}
+                    {aiReview.student_profile.events_attended?.length || 0}{" "}
+                    recorded events. This snapshot is shown for faculty context;
+                    it is not used to calculate the suggestion score.
+                  </p>
+                  {[
+                    ["Evidence considered", aiReview.reasons],
+                    ["Information to confirm", aiReview.missing_information],
+                    ["Faculty checks", aiReview.faculty_checks],
+                  ].map(
+                    ([label, items]) =>
+                      Array.isArray(items) &&
+                      items.length > 0 && (
+                        <div className="leave-ai-list" key={label}>
+                          <b>{label}</b>
+                          <ul>
+                            {items.map((item, index) => (
+                              <li key={`${label}-${index}`}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ),
+                  )}
+                  <p className="leave-ai-fairness">
+                    {aiReview.fairness_note} Performance data is synthetic.
+                    Attendance and CGPA must not determine leave approval.
+                    The reviewer makes the final decision.
+                  </p>
+                </section>
+              )}
+            </div>
+          )}
           {((role === "Faculty" && current.status === "Advisor Review") ||
             (role === "Admin" && current.status === "HOD Review")) && (
             <div className="inline-actions spacer">

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Plus,
   Star,
@@ -8,10 +8,14 @@ import {
   Cpu,
   BookOpen,
   ShoppingBag,
+  MessageCircle,
+  Send,
+  Sparkles,
 } from "lucide-react";
 import { useCampus } from "../App";
 import { students, today, dateIn, rentalSteps } from "../data/seed";
 import { uid } from "../logic";
+import { askMarketplaceAssistant, getMarketplaceProducts } from "../api";
 import {
   Heading,
   Panel,
@@ -48,13 +52,92 @@ export default function Marketplace({ rentalsPage = false }) {
     [from, setFrom] = useState(today),
     [to, setTo] = useState(dateIn(1));
   const [rental, setRental] = useState(null);
-  const p = db.products.find((p) => p.id === selected),
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogError, setCatalogError] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Hi! Tell me what you need, your budget, or where you want to pick it up. I’ll look through the campus listings.",
+      productIds: [],
+    },
+  ]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const allProducts = [
+    ...db.products,
+    ...catalogProducts.filter(
+      (product) => !db.products.some((item) => item.id === product.id),
+    ),
+  ];
+  const p = allProducts.find((p) => p.id === selected),
     r = db.rentals.find((r) => r.id === rental);
+  const openProduct = (productId) => {
+    const product = allProducts.find((item) => item.id === productId);
+    if (!product) return;
+    const startDate = product.from > today ? product.from : today;
+    setFrom(startDate);
+    setTo(dateIn(1) > startDate ? dateIn(1) : startDate);
+    setSelected(productId);
+  };
+  useEffect(() => {
+    let active = true;
+    getMarketplaceProducts()
+      .then((items) => {
+        if (active) {
+          setCatalogProducts(items);
+          setCatalogError("");
+        }
+      })
+      .catch((error) => {
+        if (active) setCatalogError(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const sendChatMessage = async (event) => {
+    event.preventDefault();
+    const message = chatDraft.trim();
+    if (!message || chatLoading) return;
+    const history = chatMessages.slice(-10).map(({ role: messageRole, content }) => ({
+      role: messageRole,
+      content,
+    }));
+    setChatDraft("");
+    setChatMessages((messages) => [
+      ...messages,
+      { role: "user", content: message, productIds: [] },
+    ]);
+    setChatLoading(true);
+    try {
+      const response = await askMarketplaceAssistant(message, history);
+      setChatMessages((messages) => [
+        ...messages,
+        {
+          role: "assistant",
+          content: response.answer,
+          productIds: response.product_ids,
+        },
+      ]);
+    } catch (error) {
+      setChatMessages((messages) => [
+        ...messages,
+        {
+          role: "assistant",
+          content: `I couldn’t reach the marketplace assistant: ${error.message}`,
+          productIds: [],
+        },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
   const days = Math.max(
     1,
     Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1,
   );
-  const products = db.products.filter(
+  const products = allProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(q.toLowerCase()) &&
       (category === "All" || p.category === category) &&
@@ -127,6 +210,113 @@ export default function Marketplace({ rentalsPage = false }) {
             </div>
             <ShoppingBag size={90} />
           </div>
+          {tab === "Explore" && (
+            <section className="market-chat" aria-label="CampusRent AI assistant">
+              <div className="market-chat-heading">
+                <span className="icon-chip blue">
+                  <Sparkles size={19} />
+                </span>
+                <div>
+                  <h2>Find it with CampusRent AI</h2>
+                  <p>Ask about products, prices, condition, or pickup locations.</p>
+                </div>
+              </div>
+              <div className="market-chat-messages" aria-live="polite">
+                {chatMessages.map((message, index) => (
+                  <div
+                    className={"market-chat-message " + message.role}
+                    key={`${message.role}-${index}`}
+                  >
+                    <div className="market-chat-bubble">
+                      {message.role === "assistant" && (
+                        <MessageCircle size={15} aria-hidden="true" />
+                      )}
+                      <p>{message.content}</p>
+                    </div>
+                    {message.productIds?.length > 0 && (
+                      <div className="market-chat-recommendations">
+                        {message.productIds.map((productId) => {
+                          const product = allProducts.find(
+                            (item) => item.id === productId,
+                          );
+                          if (!product) return null;
+                          return (
+                            <div
+                              className="market-chat-product"
+                              key={product.id}
+                            >
+                              <div>
+                                <b>{product.name}</b>
+                                <small>
+                                  ₹{product.price} / day · ₹{product.deposit} deposit ·{" "}
+                                  {product.location}
+                                </small>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openProduct(product.id)}
+                                disabled={
+                                  product.owner === user.id ||
+                                  !product.available
+                                }
+                                title={
+                                  product.owner === user.id
+                                    ? "You own this listing"
+                                    : undefined
+                                }
+                              >
+                                {product.owner === user.id
+                                  ? "Your listing"
+                                  : role === "Student"
+                                    ? "Request rental"
+                                    : "View item"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="market-chat-typing" role="status">
+                    Checking the campus listings…
+                  </div>
+                )}
+              </div>
+              <form className="market-chat-form" onSubmit={sendChatMessage}>
+                <textarea
+                  aria-label="Ask the CampusRent assistant"
+                  placeholder="e.g. I need a camera under ₹500 per day"
+                  value={chatDraft}
+                  maxLength={2000}
+                  rows={2}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      event.currentTarget.form.requestSubmit();
+                    }
+                  }}
+                />
+                <button
+                  className="primary"
+                  type="submit"
+                  disabled={chatLoading || !chatDraft.trim()}
+                  aria-label="Send message"
+                >
+                  <Send size={16} />
+                  Ask
+                </button>
+              </form>
+              {catalogError && (
+                <p className="market-chat-error" role="alert">
+                  Product catalog could not be loaded from the backend:{" "}
+                  {catalogError}
+                </p>
+              )}
+            </section>
+          )}
           <div className="toolbar">
             <input
               className="filter-input"
@@ -158,7 +348,7 @@ export default function Marketplace({ rentalsPage = false }) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             >
-              {["All", ...new Set(db.products.map((p) => p.location))].map(
+              {["All", ...new Set(allProducts.map((p) => p.location))].map(
                 (c) => (
                   <option key={c}>{c}</option>
                 ),
@@ -204,7 +394,7 @@ export default function Marketplace({ rentalsPage = false }) {
                 <article className="product-card" key={p.id}>
                   <button
                     className={"product-art " + p.art}
-                    onClick={() => setSelected(p.id)}
+                    onClick={() => openProduct(p.id)}
                     aria-label={"View " + p.name}
                   >
                     <Icon size={74} strokeWidth={1.1} />
@@ -223,14 +413,16 @@ export default function Marketplace({ rentalsPage = false }) {
                     <h3>{p.name}</h3>
                     <p>
                       {p.location} ·{" "}
-                      {students.find((s) => s.id === p.owner)?.name}
+                      {students.find((s) => s.id === p.owner)?.name ||
+                        p.ownerName ||
+                        "Campus member"}
                     </p>
                     <div className="split spacer">
                       <div>
                         <b>₹{p.price}</b>
                         <small> / day</small>
                       </div>
-                      <button onClick={() => setSelected(p.id)}>
+                      <button onClick={() => openProduct(p.id)}>
                         View item
                       </button>
                     </div>
@@ -265,7 +457,7 @@ export default function Marketplace({ rentalsPage = false }) {
             />
             <Metric
               label="Your listings"
-              value={db.products.filter((p) => p.owner === user.id).length}
+              value={allProducts.filter((p) => p.owner === user.id).length}
               icon={ShoppingBag}
             />
             <Metric

@@ -18,6 +18,9 @@ dependencies = [
     "opentelemetry-instrumentation-openai-agents-v2>=0.1.0",
     "opentelemetry-sdk>=1.45.1",
     "pydantic>=2.13.5",
+    "pypdf>=6.19.0",
+    "python-docx>=1.2.0",
+    "python-multipart>=0.0.32",
     "sqlalchemy>=2.1.4",
     "uvicorn>=0.54.0",
 ]

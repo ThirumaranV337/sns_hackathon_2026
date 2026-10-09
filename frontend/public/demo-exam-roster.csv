@@ -1,0 +1,121 @@
+﻿Register Number,Student Name,Department,Year,Section,Subject Code,Subject Name
+26CSE001,Aarav Sharma 1,CSE,3,A,CS301,Algorithms
+26ECE002,Diya Nair 1,ECE,3,B,EC301,Digital Systems
+26MECH003,Arjun Kumar 1,MECH,3,A,ME301,Thermodynamics
+26CSE004,Meera Krishnan 1,CSE,3,B,CS301,Algorithms
+26ECE005,Rohan Patel 1,ECE,3,A,EC301,Digital Systems
+26MECH006,Ananya Rao 1,MECH,3,B,ME301,Thermodynamics
+26CSE007,Kavin Raj 1,CSE,3,A,CS301,Algorithms
+26ECE008,Ishita Singh 1,ECE,3,B,EC301,Digital Systems
+26MECH009,Aditya Menon 1,MECH,3,A,ME301,Thermodynamics
+26CSE010,Sneha Reddy 1,CSE,3,B,CS301,Algorithms
+26ECE011,Pranav S 1,ECE,3,A,EC301,Digital Systems
+26MECH012,Nila Arun 1,MECH,3,B,ME301,Thermodynamics
+26CSE013,Aarav Sharma 2,CSE,3,A,CS301,Algorithms
+26ECE014,Diya Nair 2,ECE,3,B,EC301,Digital Systems
+26MECH015,Arjun Kumar 2,MECH,3,A,ME301,Thermodynamics
+26CSE016,Meera Krishnan 2,CSE,3,B,CS301,Algorithms
+26ECE017,Rohan Patel 2,ECE,3,A,EC301,Digital Systems
+26MECH018,Ananya Rao 2,MECH,3,B,ME301,Thermodynamics
+26CSE019,Kavin Raj 2,CSE,3,A,CS301,Algorithms
+26ECE020,Ishita Singh 2,ECE,3,B,EC301,Digital Systems
+26MECH021,Aditya Menon 2,MECH,3,A,ME301,Thermodynamics
+26CSE022,Sneha Reddy 2,CSE,3,B,CS301,Algorithms
+26ECE023,Pranav S 2,ECE,3,A,EC301,Digital Systems
+26MECH024,Nila Arun 2,MECH,3,B,ME301,Thermodynamics
+26CSE025,Aarav Sharma 3,CSE,3,A,CS301,Algorithms
+26ECE026,Diya Nair 3,ECE,3,B,EC301,Digital Systems
+26MECH027,Arjun Kumar 3,MECH,3,A,ME301,Thermodynamics
+26CSE028,Meera Krishnan 3,CSE,3,B,CS301,Algorithms
+26ECE029,Rohan Patel 3,ECE,3,A,EC301,Digital Systems
+26MECH030,Ananya Rao 3,MECH,3,B,ME301,Thermodynamics
+26CSE031,Kavin Raj 3,CSE,3,A,CS301,Algorithms
+26ECE032,Ishita Singh 3,ECE,3,B,EC301,Digital Systems
+26MECH033,Aditya Menon 3,MECH,3,A,ME301,Thermodynamics
+26CSE034,Sneha Reddy 3,CSE,3,B,CS301,Algorithms
+26ECE035,Pranav S 3,ECE,3,A,EC301,Digital Systems
+26MECH036,Nila Arun 3,MECH,3,B,ME301,Thermodynamics
+26CSE037,Aarav Sharma 4,CSE,3,A,CS301,Algorithms
+26ECE038,Diya Nair 4,ECE,3,B,EC301,Digital Systems
+26MECH039,Arjun Kumar 4,MECH,3,A,ME301,Thermodynamics
+26CSE040,Meera Krishnan 4,CSE,3,B,CS301,Algorithms
+26ECE041,Rohan Patel 4,ECE,3,A,EC301,Digital Systems
+26MECH042,Ananya Rao 4,MECH,3,B,ME301,Thermodynamics
+26CSE043,Kavin Raj 4,CSE,3,A,CS301,Algorithms
+26ECE044,Ishita Singh 4,ECE,3,B,EC301,Digital Systems
+26MECH045,Aditya Menon 4,MECH,3,A,ME301,Thermodynamics
+26CSE046,Sneha Reddy 4,CSE,3,B,CS301,Algorithms
+26ECE047,Pranav S 4,ECE,3,A,EC301,Digital Systems
+26MECH048,Nila Arun 4,MECH,3,B,ME301,Thermodynamics
+26CSE049,Aarav Sharma 5,CSE,3,A,CS301,Algorithms
+26ECE050,Diya Nair 5,ECE,3,B,EC301,Digital Systems
+26MECH051,Arjun Kumar 5,MECH,3,A,ME301,Thermodynamics
+26CSE052,Meera Krishnan 5,CSE,3,B,CS301,Algorithms
+26ECE053,Rohan Patel 5,ECE,3,A,EC301,Digital Systems
+26MECH054,Ananya Rao 5,MECH,3,B,ME301,Thermodynamics
+26CSE055,Kavin Raj 5,CSE,3,A,CS301,Algorithms
+26ECE056,Ishita Singh 5,ECE,3,B,EC301,Digital Systems
+26MECH057,Aditya Menon 5,MECH,3,A,ME301,Thermodynamics
+26CSE058,Sneha Reddy 5,CSE,3,B,CS301,Algorithms
+26ECE059,Pranav S 5,ECE,3,A,EC301,Digital Systems
+26MECH060,Nila Arun 5,MECH,3,B,ME301,Thermodynamics
+26CSE061,Aarav Sharma 6,CSE,3,A,CS301,Algorithms
+26ECE062,Diya Nair 6,ECE,3,B,EC301,Digital Systems
+26MECH063,Arjun Kumar 6,MECH,3,A,ME301,Thermodynamics
+26CSE064,Meera Krishnan 6,CSE,3,B,CS301,Algorithms
+26ECE065,Rohan Patel 6,ECE,3,A,EC301,Digital Systems
+26MECH066,Ananya Rao 6,MECH,3,B,ME301,Thermodynamics
+26CSE067,Kavin Raj 6,CSE,3,A,CS301,Algorithms
+26ECE068,Ishita Singh 6,ECE,3,B,EC301,Digital Systems
+26MECH069,Aditya Menon 6,MECH,3,A,ME301,Thermodynamics
+26CSE070,Sneha Reddy 6,CSE,3,B,CS301,Algorithms
+26ECE071,Pranav S 6,ECE,3,A,EC301,Digital Systems
+26MECH072,Nila Arun 6,MECH,3,B,ME301,Thermodynamics
+26CSE073,Aarav Sharma 7,CSE,3,A,CS301,Algorithms
+26ECE074,Diya Nair 7,ECE,3,B,EC301,Digital Systems
+26MECH075,Arjun Kumar 7,MECH,3,A,ME301,Thermodynamics
+26CSE076,Meera Krishnan 7,CSE,3,B,CS301,Algorithms
+26ECE077,Rohan Patel 7,ECE,3,A,EC301,Digital Systems
+26MECH078,Ananya Rao 7,MECH,3,B,ME301,Thermodynamics
+26CSE079,Kavin Raj 7,CSE,3,A,CS301,Algorithms
+26ECE080,Ishita Singh 7,ECE,3,B,EC301,Digital Systems
+26MECH081,Aditya Menon 7,MECH,3,A,ME301,Thermodynamics
+26CSE082,Sneha Reddy 7,CSE,3,B,CS301,Algorithms
+26ECE083,Pranav S 7,ECE,3,A,EC301,Digital Systems
+26MECH084,Nila Arun 7,MECH,3,B,ME301,Thermodynamics
+26CSE085,Aarav Sharma 8,CSE,3,A,CS301,Algorithms
+26ECE086,Diya Nair 8,ECE,3,B,EC301,Digital Systems
+26MECH087,Arjun Kumar 8,MECH,3,A,ME301,Thermodynamics
+26CSE088,Meera Krishnan 8,CSE,3,B,CS301,Algorithms
+26ECE089,Rohan Patel 8,ECE,3,A,EC301,Digital Systems
+26MECH090,Ananya Rao 8,MECH,3,B,ME301,Thermodynamics
+26CSE091,Kavin Raj 8,CSE,3,A,CS301,Algorithms
+26ECE092,Ishita Singh 8,ECE,3,B,EC301,Digital Systems
+26MECH093,Aditya Menon 8,MECH,3,A,ME301,Thermodynamics
+26CSE094,Sneha Reddy 8,CSE,3,B,CS301,Algorithms
+26ECE095,Pranav S 8,ECE,3,A,EC301,Digital Systems
+26MECH096,Nila Arun 8,MECH,3,B,ME301,Thermodynamics
+26CSE097,Aarav Sharma 9,CSE,3,A,CS301,Algorithms
+26ECE098,Diya Nair 9,ECE,3,B,EC301,Digital Systems
+26MECH099,Arjun Kumar 9,MECH,3,A,ME301,Thermodynamics
+26CSE100,Meera Krishnan 9,CSE,3,B,CS301,Algorithms
+26ECE101,Rohan Patel 9,ECE,3,A,EC301,Digital Systems
+26MECH102,Ananya Rao 9,MECH,3,B,ME301,Thermodynamics
+26CSE103,Kavin Raj 9,CSE,3,A,CS301,Algorithms
+26ECE104,Ishita Singh 9,ECE,3,B,EC301,Digital Systems
+26MECH105,Aditya Menon 9,MECH,3,A,ME301,Thermodynamics
+26CSE106,Sneha Reddy 9,CSE,3,B,CS301,Algorithms
+26ECE107,Pranav S 9,ECE,3,A,EC301,Digital Systems
+26MECH108,Nila Arun 9,MECH,3,B,ME301,Thermodynamics
+26CSE109,Aarav Sharma 10,CSE,3,A,CS301,Algorithms
+26ECE110,Diya Nair 10,ECE,3,B,EC301,Digital Systems
+26MECH111,Arjun Kumar 10,MECH,3,A,ME301,Thermodynamics
+26CSE112,Meera Krishnan 10,CSE,3,B,CS301,Algorithms
+26ECE113,Rohan Patel 10,ECE,3,A,EC301,Digital Systems
+26MECH114,Ananya Rao 10,MECH,3,B,ME301,Thermodynamics
+26CSE115,Kavin Raj 10,CSE,3,A,CS301,Algorithms
+26ECE116,Ishita Singh 10,ECE,3,B,EC301,Digital Systems
+26MECH117,Aditya Menon 10,MECH,3,A,ME301,Thermodynamics
+26CSE118,Sneha Reddy 10,CSE,3,B,CS301,Algorithms
+26ECE119,Pranav S 10,ECE,3,A,EC301,Digital Systems
+26MECH120,Nila Arun 10,MECH,3,B,ME301,Thermodynamics

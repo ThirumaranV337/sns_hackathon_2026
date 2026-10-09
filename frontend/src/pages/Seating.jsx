@@ -91,11 +91,11 @@ export default function Seating() {
       >
         <button
           onClick={() =>
-            csvDownload("exam-roster-template", examStudents.slice(0, 3))
+            csvDownload("demo-exam-roster", examStudents)
           }
         >
           <Download size={16} />
-          CSV template
+          Download demo CSV (120)
         </button>
       </Heading>
       <div className="two-col">

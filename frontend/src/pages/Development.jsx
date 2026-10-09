@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Sparkles,
@@ -22,7 +22,8 @@ import {
 } from "recharts";
 import { useCampus } from "../App";
 import { students, faculty } from "../data/seed";
-import { risk, copilotAnswer } from "../logic";
+import { risk } from "../logic";
+import { askStudentAnalytics, askStudyAssistant } from "../api";
 import {
   Heading,
   Panel,
@@ -32,12 +33,369 @@ import {
   Empty,
   Metric,
 } from "../components/ui";
+
+function StudyMarkdown({ content }) {
+  const lines = content.split(/\r?\n/);
+  const blocks = [];
+  let paragraph = [];
+  let list = null;
+  let code = null;
+
+  const renderInline = (text, keyPrefix) =>
+    text
+      .split(/(\*\*.+?\*\*|__.+?__|\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`)/g)
+      .filter(Boolean)
+      .map((part, index) => {
+        const key = `${keyPrefix}-${index}`;
+        if (
+          (part.startsWith("**") && part.endsWith("**")) ||
+          (part.startsWith("__") && part.endsWith("__"))
+        ) {
+          return <strong key={key}>{part.slice(2, -2)}</strong>;
+        }
+        if (
+          (part.startsWith("*") && part.endsWith("*")) ||
+          (part.startsWith("_") && part.endsWith("_"))
+        ) {
+          return <em key={key}>{part.slice(1, -1)}</em>;
+        }
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return <code key={key}>{part.slice(1, -1)}</code>;
+        }
+        return part;
+      });
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push(
+      <p key={`p-${blocks.length}`}>
+        {renderInline(paragraph.join(" "), `p-${blocks.length}`)}
+      </p>,
+    );
+    paragraph = [];
+  };
+
+  const flushList = () => {
+    if (!list) return;
+    const List = list.type === "ordered" ? "ol" : "ul";
+    blocks.push(
+      <List key={`list-${blocks.length}`}>
+        {list.items.map((item, index) => (
+          <li key={index}>
+            {renderInline(item, `list-${blocks.length}-${index}`)}
+          </li>
+        ))}
+      </List>,
+    );
+    list = null;
+  };
+
+  lines.forEach((line, index) => {
+    const fence = line.match(/^\s*```([\w+-]*)\s*$/);
+    if (fence) {
+      flushParagraph();
+      flushList();
+      if (code === null) code = [];
+      else {
+        blocks.push(
+          <pre key={`code-${blocks.length}`}>
+            <code>{code.join("\n")}</code>
+          </pre>,
+        );
+        code = null;
+      }
+      return;
+    }
+    if (code !== null) {
+      code.push(line);
+      return;
+    }
+
+    const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
+    const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+    const quote = line.match(/^\s*>\s?(.*)$/);
+    const separator = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line);
+
+    if (!line.trim() || heading || unordered || ordered || quote || separator) {
+      flushParagraph();
+    }
+    if (unordered || ordered) {
+      const type = ordered ? "ordered" : "unordered";
+      if (list?.type !== type) {
+        flushList();
+        list = { type, items: [] };
+      }
+      list.items.push((ordered || unordered)[1]);
+      return;
+    }
+    flushList();
+    if (!line.trim()) return;
+    if (heading) {
+      const HeadingTag = `h${heading[1].length}`;
+      blocks.push(
+        <HeadingTag key={`h-${index}`}>
+          {renderInline(heading[2], `h-${index}`)}
+        </HeadingTag>,
+      );
+      return;
+    }
+    if (quote) {
+      blocks.push(
+        <blockquote key={`q-${index}`}>
+          {renderInline(quote[1], `q-${index}`)}
+        </blockquote>,
+      );
+      return;
+    }
+    if (separator) {
+      blocks.push(<hr key={`hr-${index}`} />);
+      return;
+    }
+    paragraph.push(line.trim());
+  });
+
+  flushParagraph();
+  flushList();
+  if (code !== null) {
+    blocks.push(
+      <pre key={`code-${blocks.length}`}>
+        <code>{code.join("\n")}</code>
+      </pre>,
+    );
+  }
+  return <div className="study-markdown">{blocks}</div>;
+}
+
+function StudentAnalyticsChat({ role, studentId }) {
+  const { toast } = useCampus();
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [typing, setTyping] = useState(false);
+  const prompts =
+    role === "Student"
+      ? [
+          "Summarize my subject scores and strongest subject",
+          "Which subjects should I focus on?",
+          "Summarize my achievements and activities",
+        ]
+      : [
+          "Compare average subject scores by department",
+          "Which subjects have the lowest average scores?",
+          "Summarize student achievements and activities",
+        ];
+
+  const ask = async (question) => {
+    if (!question.trim() || typing) return;
+    const userMessage = { role: "user", text: question.trim() };
+    const history = messages.slice(-8).map((message) => ({
+      role: message.role,
+      content: message.text.slice(0, 2000),
+    }));
+    setMessages((current) => [...current, userMessage]);
+    setInput("");
+    setTyping(true);
+    try {
+      const {
+        answer,
+        recordsAnalyzed,
+        interpretationAvailable,
+        visualizations = [],
+      } =
+        await askStudentAnalytics(
+        question.trim(),
+        history,
+        role,
+        studentId,
+      );
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: answer,
+          recordsAnalyzed,
+          interpretationAvailable,
+          visualizations,
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) =>
+        current.filter((message) => message !== userMessage),
+      );
+      toast(`Student analytics could not answer: ${error.message}`);
+    } finally {
+      setTyping(false);
+    }
+  };
+
+  return (
+    <Panel
+      title={
+        <span className="directory-chat-heading">
+          <Bot size={18} />
+          {role === "Student"
+            ? "My student analytics"
+            : role === "Admin"
+              ? "Management analytics chat"
+              : "Student analytics chat"}
+        </span>
+      }
+      subtitle={
+        role === "Student"
+          ? "Ask about your own synthetic student record."
+          : "Answers are based on the full synthetic student database."
+      }
+    >
+      <div className="directory-chat-prompts">
+        {prompts.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            disabled={typing}
+            onClick={() => ask(prompt)}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+      <div
+        className="chat-messages directory-analytics-messages"
+        aria-live="polite"
+      >
+        {!messages.length && (
+          <div className="chat-welcome">
+            <span className="icon-chip purple">
+              <Sparkles size={24} />
+            </span>
+            <h3>
+              {role === "Student"
+                ? "Explore your academic record"
+                : "Explore student analytics"}
+            </h3>
+            <p>
+              {role === "Student"
+                ? "Ask about your subject scores, achievements, or activities."
+                : "Ask questions about academic performance, departments, achievements, or activities."}
+            </p>
+          </div>
+        )}
+        {messages.map((message, index) => (
+          <div
+            key={`${index}-${message.role}`}
+            className={"chat-message " + message.role}
+          >
+            <small>
+              {message.role === "user"
+                ? "You"
+                : `${message.interpretationAvailable ? "Educational analyst" : "Verified database analysis"} · ${message.recordsAnalyzed} record${message.recordsAnalyzed === 1 ? "" : "s"}`}
+            </small>
+            {message.role === "assistant" ? (
+              <StudyMarkdown content={message.text} />
+            ) : (
+              <p>{message.text}</p>
+            )}
+            {message.role === "assistant" &&
+              message.visualizations?.map((visualization) => (
+                <section
+                  className="analytics-visualization"
+                  key={visualization.title}
+                  aria-label={visualization.title}
+                >
+                  <h4>{visualization.title}</h4>
+                  <p>{visualization.description}</p>
+                  <div className="analytics-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={visualization.data}
+                        layout="vertical"
+                        margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
+                      >
+                        <CartesianGrid
+                          stroke="#eef1f6"
+                          strokeDasharray="3 3"
+                          horizontal={false}
+                        />
+                        <XAxis
+                          type="number"
+                          domain={
+                            visualization.unit.includes("out of 100")
+                              ? [0, 100]
+                              : [0, "auto"]
+                          }
+                          tick={{ fontSize: 10 }}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={130}
+                          tick={{ fontSize: 10 }}
+                        />
+                        <Tooltip
+                          formatter={(value) => [
+                            Number(value).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            }),
+                            visualization.unit,
+                          ]}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="#718aeb"
+                          radius={[0, 5, 5, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+              ))}
+            {message.role === "assistant" &&
+              !message.interpretationAvailable && (
+                <p className="analytics-warning" role="status">
+                  Sarvam did not return an educational interpretation this
+                  time. The verified findings above were calculated from the
+                  database and are still available.
+                </p>
+              )}
+          </div>
+        ))}
+        {typing && <p role="status">Analyzing database records…</p>}
+      </div>
+      <form
+        className="chat-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          ask(input);
+        }}
+      >
+        <input
+          className="filter-input"
+          aria-label="Ask about student analytics"
+          placeholder={
+            role === "Student"
+              ? "Ask about your student record..."
+              : "Ask a student or management analytics question..."
+          }
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+        />
+        <button
+          className="primary"
+          disabled={typing || !input.trim()}
+          aria-label="Ask about student analytics"
+        >
+          <Send size={17} />
+        </button>
+      </form>
+    </Panel>
+  );
+}
+
 export default function Development({
   directory = false,
   attendance = false,
   facultyPage = false,
 }) {
-  const { user, role, navigate } = useCampus();
+  const { user, role, navigate, toast } = useCampus();
   const { id } = useParams();
   const [q, setQ] = useState(""),
     [dept, setDept] = useState("All"),
@@ -49,14 +407,8 @@ export default function Development({
     [latestAnswer, setLatestAnswer] = useState(""),
     [doubt, setDoubt] = useState(""),
     [showDirectoryChat, setShowDirectoryChat] = useState(false),
-    [directoryChatInput, setDirectoryChatInput] = useState(""),
-    [directoryChatMessages, setDirectoryChatMessages] = useState([]),
-    [directoryChatTyping, setDirectoryChatTyping] = useState(false),
     [typing, setTyping] = useState(false);
-  const timer = useRef();
-  useEffect(() => () => clearTimeout(timer.current), []);
   const s = students.find((s) => s.id === (attendance ? user.id : id));
-  const dataset = role === "Student" ? [user] : students;
   const directoryStudents = students.filter(
     (student) =>
       (student.name + student.roll)
@@ -65,52 +417,50 @@ export default function Development({
       (dept === "All" || dept === student.dept) &&
       (riskFilter === "All" || risk(student) === riskFilter),
   );
-  const ask = (text) => {
+  const ask = async (text) => {
     if (!text.trim() || typing) return;
     setQueryMessages((m) => [...m, { role: "user", text }]);
     setDoubtMessages([]);
     setLatestAnswer("");
     setQ("");
     setTyping(true);
-    timer.current = setTimeout(() => {
-      const answer = copilotAnswer(text, dataset);
+    try {
+      const history = queryMessages.map((message) => ({
+        role: message.role,
+        content: message.text,
+      }));
+      const { answer } = await askStudyAssistant(text.trim(), history);
       setLatestAnswer(answer);
       setQueryMessages((m) => [
         ...m,
         { role: "assistant", text: answer },
       ]);
+    } catch (error) {
+      toast(`Study assistant could not answer: ${error.message}`);
+    } finally {
       setTyping(false);
-    }, 650);
+    }
   };
-  const askAboutAnswer = (text) => {
+  const askAboutAnswer = async (text) => {
     if (!text.trim() || typing || !latestAnswer) return;
     setDoubtMessages((m) => [...m, { role: "user", text }]);
     setDoubt("");
     setTyping(true);
-    timer.current = setTimeout(() => {
-      const answer = copilotAnswer(`${text} ${latestAnswer}`, dataset);
+    try {
+      const history = [
+        ...queryMessages,
+        ...doubtMessages,
+      ].map((message) => ({
+        role: message.role,
+        content: message.text,
+      }));
+      const { answer } = await askStudyAssistant(text.trim(), history);
       setDoubtMessages((m) => [...m, { role: "assistant", text: answer }]);
+    } catch (error) {
+      toast(`Study assistant could not answer: ${error.message}`);
+    } finally {
       setTyping(false);
-    }, 650);
-  };
-  const askDirectoryAnalytics = (text) => {
-    if (!text.trim() || directoryChatTyping) return;
-    setDirectoryChatMessages((messages) => [
-      ...messages,
-      { role: "user", text },
-    ]);
-    setDirectoryChatInput("");
-    setDirectoryChatTyping(true);
-    timer.current = setTimeout(() => {
-      setDirectoryChatMessages((messages) => [
-        ...messages,
-        {
-          role: "assistant",
-          text: copilotAnswer(text, directoryStudents),
-        },
-      ]);
-      setDirectoryChatTyping(false);
-    }, 500);
+    }
   };
   if (facultyPage)
     return (
@@ -296,6 +646,11 @@ export default function Development({
             </div>
           </Panel>
         </div>
+        <div className="analytics-disclaimer">
+          This analytics demo uses synthetic records. Use its recommendations
+          as decision support, not as a substitute for faculty review.
+        </div>
+        <StudentAnalyticsChat role={role} studentId={user.id} />
       </>
     );
   if (directory)
@@ -307,7 +662,7 @@ export default function Development({
         />
         <Panel
           title="Your students"
-          subtitle={`${directoryStudents.length} students · analytics chat uses this filtered list`}
+          subtitle={`${directoryStudents.length} students shown · analytics chat uses the full student database`}
           action={
             <button
               type="button"
@@ -384,86 +739,7 @@ export default function Development({
           </div>
         </Panel>
         {showDirectoryChat && (
-          <Panel
-            title={
-              <span className="directory-chat-heading">
-                <Bot size={18} />
-                Student analytics chat
-              </span>
-            }
-            subtitle="Ask about the students currently shown by your search and filters."
-          >
-            <div className="directory-chat-prompts">
-              {[
-                "Who is at risk?",
-                "Show top academic performers",
-                "Summarize attendance concerns",
-              ].map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  disabled={directoryChatTyping || !directoryStudents.length}
-                  onClick={() => askDirectoryAnalytics(prompt)}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-            <div className="chat-messages directory-analytics-messages" aria-live="polite">
-              {!directoryChatMessages.length && (
-                <div className="chat-welcome">
-                  <span className="icon-chip purple">
-                    <Sparkles size={24} />
-                  </span>
-                  <h3>Explore student analytics</h3>
-                  <p>Ask about attendance, academic performance, skills, or a student's name.</p>
-                </div>
-              )}
-              {directoryChatMessages.map((message, index) => (
-                <div
-                  key={`${index}-${message.role}`}
-                  className={"chat-message " + message.role}
-                >
-                  <small>
-                    {message.role === "user" ? "You" : "Student Analytics"}
-                  </small>
-                  <p>{message.text}</p>
-                </div>
-              ))}
-              {directoryChatTyping && (
-                <p role="status">Analyzing filtered student records…</p>
-              )}
-              {!directoryStudents.length && (
-                <p>No students match the current directory filters.</p>
-              )}
-            </div>
-            <form
-              className="chat-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                askDirectoryAnalytics(directoryChatInput);
-              }}
-            >
-              <input
-                className="filter-input"
-                aria-label="Ask about student analytics"
-                placeholder="Ask about these students..."
-                value={directoryChatInput}
-                onChange={(event) => setDirectoryChatInput(event.target.value)}
-              />
-              <button
-                className="primary"
-                disabled={
-                  directoryChatTyping ||
-                  !directoryChatInput.trim() ||
-                  !directoryStudents.length
-                }
-                aria-label="Ask about student analytics"
-              >
-                <Send size={17} />
-              </button>
-            </form>
-          </Panel>
+          <StudentAnalyticsChat role={role} studentId={user.id} />
         )}
       </>
     );
@@ -476,7 +752,6 @@ export default function Development({
       >
         <button
           onClick={() => {
-            clearTimeout(timer.current);
             setQueryMessages([]);
             setDoubtMessages([]);
             setLatestAnswer("");
@@ -490,10 +765,11 @@ export default function Development({
           New chat
         </button>
       </Heading>
-      <div className="two-col">
+      <div className="study-assistant-layout">
         <Panel
+          className="study-assistant-panel"
           title="Study assistant"
-          subtitle="Frontend-only preview · responses use the existing local demo logic"
+          subtitle="Powered by the Sarvam-105B study assistant"
         >
           <div className="study-assistant-tabs" role="tablist" aria-label="Study assistant screens">
             <button
@@ -531,7 +807,11 @@ export default function Development({
                 {queryMessages.map((m, i) => (
                   <div key={i} className={"chat-message " + m.role}>
                     <small>{m.role === "user" ? "You" : "Study Assistant"}</small>
-                    <p>{m.text}</p>
+                    {m.role === "assistant" ? (
+                      <StudyMarkdown content={m.text} />
+                    ) : (
+                      <p>{m.text}</p>
+                    )}
                   </div>
                 ))}
                 {typing && <p role="status">Preparing an answer…</p>}
@@ -563,7 +843,7 @@ export default function Development({
             <>
               <div className="study-answer-context">
                 <b><Sparkles size={15} /> Answer to discuss</b>
-                <p>{latestAnswer}</p>
+                <StudyMarkdown content={latestAnswer} />
               </div>
               <div className="chat-messages study-chat-messages" aria-live="polite">
                 {!doubtMessages.length && (
@@ -575,7 +855,11 @@ export default function Development({
                 {doubtMessages.map((m, i) => (
                   <div key={i} className={"chat-message " + m.role}>
                     <small>{m.role === "user" ? "You" : "Study Assistant"}</small>
-                    <p>{m.text}</p>
+                    {m.role === "assistant" ? (
+                      <StudyMarkdown content={m.text} />
+                    ) : (
+                      <p>{m.text}</p>
+                    )}
                   </div>
                 ))}
                 {typing && <p role="status">Preparing a clarification…</p>}
@@ -605,28 +889,6 @@ export default function Development({
             </>
           )}
         </Panel>
-        <div className="stack">
-          <Panel title="Two-step study chat">
-            <div className="study-step">
-              <span>1</span>
-              <div>
-                <b>Ask your question</b>
-                <p>Start with the topic or concept you want to understand.</p>
-              </div>
-            </div>
-            <div className="study-step">
-              <span>2</span>
-              <div>
-                <b>Ask a doubt</b>
-                <p>Open the second screen to follow up on the latest answer.</p>
-              </div>
-            </div>
-          </Panel>
-          <div className="notice">
-            This frontend-only version uses local demo responses. It is not
-            connected to an AI service.
-          </div>
-        </div>
       </div>
     </>
   );

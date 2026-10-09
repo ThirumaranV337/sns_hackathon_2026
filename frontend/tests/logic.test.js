@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { arrange, validateRoster, copilotAnswer, risk } from "../src/logic.js";
 import { examStudents, students } from "../src/data/seed.js";
 import Papa from "papaparse";
@@ -41,6 +42,23 @@ test("CSV accepts BOM and quoted comma fields", () => {
   const r = validateRoster(csv);
   assert.deepEqual(r.errors, []);
   assert.equal(r.rows[0]["Student Name"], "Sharma, Aarav");
+});
+test("downloadable demo CSV validates and generates a complete seating plan", () => {
+  const csv = readFileSync(
+    new URL("../public/demo-exam-roster.csv", import.meta.url),
+    "utf8",
+  );
+  const parsed = validateRoster(csv);
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.rows.length, 120);
+  assert.equal(
+    new Set(parsed.rows.map((student) => student["Register Number"])).size,
+    120,
+  );
+
+  const result = arrange(parsed.rows, rooms);
+  assert.equal(result.seats.length, 120);
+  assert.equal(result.conflicts, 0);
 });
 test("CSV catches duplicate IDs and missing fields", () => {
   const r = validateRoster(
